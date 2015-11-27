@@ -9,6 +9,8 @@
 #import "PVEmulatorCore.h"
 #import "NSObject+PVAbstractAdditions.h"
 #import <mach/mach_time.h>
+#import "OETimingUtils.h"
+
 static Class PVEmulatorCoreClass = Nil;
 static NSTimeInterval defaultFrameInterval = 60.0;
 
@@ -16,7 +18,7 @@ static NSTimeInterval defaultFrameInterval = 60.0;
 
 + (void)initialize
 {
-    if(self == [PVEmulatorCore class])
+    if (self == [PVEmulatorCore class])
     {
         PVEmulatorCoreClass = [PVEmulatorCore class];
     }
@@ -49,12 +51,13 @@ static NSTimeInterval defaultFrameInterval = 60.0;
 
 - (void)startEmulation
 {
-	if([self class] != PVEmulatorCoreClass)
+	if ([self class] != PVEmulatorCoreClass)
     {
 		if (!isRunning)
 		{
 			isRunning  = YES;
 			shouldStop = NO;
+            framerateMultiplier = 1.0;
 			
 			[NSThread detachNewThreadSelector:@selector(frameRefreshThread:) toTarget:self withObject:nil];
 		}
@@ -91,7 +94,58 @@ static NSTimeInterval defaultFrameInterval = 60.0;
 
 - (void)frameRefreshThread:(id)anArgument
 {
-	[self doesNotImplementSelector:_cmd];
+    gameInterval = 1.0 / ([self frameInterval] * framerateMultiplier);
+    NSTimeInterval gameTime = OEMonotonicTime();
+    OESetThreadRealtime(gameInterval, 0.007, 0.03); // guessed from bsnes
+
+    while (!shouldStop)
+    {
+        if (self.shouldResyncTime)
+        {
+            self.shouldResyncTime = NO;
+            gameTime = OEMonotonicTime();
+        }
+
+        gameTime += gameInterval;
+
+        @autoreleasepool
+        {
+            if (isRunning)
+            {
+                if (_fastForward)
+                {
+                    [self executeFrame];
+                }
+                else
+                {
+                    @synchronized(self)
+                    {
+                        [self executeFrame];
+                    }
+                }
+            }
+        }
+        
+        OEWaitUntil(gameTime);
+    }
+}
+
+- (void)setFastForward:(BOOL)fastForward
+{
+    _fastForward = fastForward;
+
+    if (_fastForward)
+    {
+        framerateMultiplier = 5.0; // 5x speed
+    }
+    else
+    {
+        framerateMultiplier = 1.0; // normal speed
+    }
+
+    NSLog(@"multiplier: %.1f", framerateMultiplier);
+    gameInterval = 1.0 / ([self frameInterval] * framerateMultiplier);
+    OESetThreadRealtime(gameInterval, 0.007, 0.03); // guessed from bsnes
 }
 
 - (void)executeFrame
@@ -103,6 +157,16 @@ static NSTimeInterval defaultFrameInterval = 60.0;
 {
 	[self doesNotImplementSelector:_cmd];
 	return NO;
+}
+
+- (BOOL)supportsDiskSwapping
+{
+    return NO;
+}
+
+- (void)swapDisk
+{
+    [self doesNotImplementOptionalSelector:_cmd];
 }
 
 #pragma mark - Video

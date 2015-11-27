@@ -40,8 +40,10 @@
 
     UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(done:)];
     [self.navigationItem setRightBarButtonItem:doneButton];
+    if (![[self conflictedFiles] count]) {
+        self.tableView.separatorColor = [UIColor clearColor];
+    }
 #endif
- 
     [self updateConflictedFiles];
 }
 

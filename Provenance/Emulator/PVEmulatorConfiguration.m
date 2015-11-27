@@ -55,6 +55,9 @@ NSString * const PVGBASystemIdentifier = @"com.provenance.gba";
 NSString * const PVGBSystemIdentifier = @"com.provenance.gb";
 NSString * const PVGBCSystemIdentifier = @"com.provenance.gbc";
 NSString * const PVNESSystemIdentifier = @"com.provenance.nes";
+NSString * const PVFDSSystemIdentifier = @"com.provenance.fds";
+NSString * const PVSG1000SystemIdentifier = @"com.provenance.sg1000";
+
 
 @interface PVEmulatorConfiguration ()
 
@@ -101,7 +104,8 @@ NSString * const PVNESSystemIdentifier = @"com.provenance.nes";
 	if ([systemID isEqualToString:PVGenesisSystemIdentifier] ||
         [systemID isEqualToString:PVGameGearSystemIdentifier] ||
         [systemID isEqualToString:PVMasterSystemSystemIdentifier] ||
-        [systemID isEqualToString:PVSegaCDSystemIdentifier])
+        [systemID isEqualToString:PVSegaCDSystemIdentifier] ||
+        [systemID isEqualToString:PVSG1000SystemIdentifier])
 	{
 		core = [[PVGenesisEmulatorCore alloc] init];
 	}
@@ -118,7 +122,8 @@ NSString * const PVNESSystemIdentifier = @"com.provenance.nes";
     {
         core = [[PVGBEmulatorCore alloc] init];
     }
-    else if ([systemID isEqualToString:PVNESSystemIdentifier])
+    else if ([systemID isEqualToString:PVNESSystemIdentifier] ||
+             [systemID isEqualToString:PVFDSSystemIdentifier])
     {
         core = [[PVNESEmulatorCore alloc] init];
     }
@@ -133,7 +138,8 @@ NSString * const PVNESSystemIdentifier = @"com.provenance.nes";
     if ([systemID isEqualToString:PVGenesisSystemIdentifier] ||
         [systemID isEqualToString:PVGameGearSystemIdentifier] ||
         [systemID isEqualToString:PVMasterSystemSystemIdentifier] ||
-        [systemID isEqualToString:PVSegaCDSystemIdentifier])
+        [systemID isEqualToString:PVSegaCDSystemIdentifier] ||
+        [systemID isEqualToString:PVSG1000SystemIdentifier])
 	{
 		controller = [[PVGenesisControllerViewController alloc] initWithControlLayout:[self controllerLayoutForSystem:systemID] systemIdentifier:systemID];
 	}
@@ -150,7 +156,8 @@ NSString * const PVNESSystemIdentifier = @"com.provenance.nes";
     {
         controller = [[PVGBControllerViewController alloc] initWithControlLayout:[self controllerLayoutForSystem:systemID] systemIdentifier:systemID];
     }
-    else if ([systemID isEqualToString:PVNESSystemIdentifier])
+    else if ([systemID isEqualToString:PVNESSystemIdentifier] ||
+             [systemID isEqualToString:PVFDSSystemIdentifier])
     {
         controller = [[PVNESControllerViewController alloc] initWithControlLayout:[self controllerLayoutForSystem:systemID] systemIdentifier:systemID];
     }

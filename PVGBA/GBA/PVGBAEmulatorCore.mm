@@ -81,65 +81,6 @@ static __weak PVGBAEmulatorCore *_current;
 
 # pragma mark - Execution
 
-- (void)frameRefreshThread:(id)anArgument
-{
-    gameInterval = 1.0 / [self frameInterval];
-    NSTimeInterval gameTime = OEMonotonicTime();
-    
-    /*
-     Calling OEMonotonicTime() from the base class implementation
-     of this method causes it to return a garbage value similar
-     to 1.52746e+9 which, in turn, causes OEWaitUntil to wait forever.
-     
-     Calculating the absolute time in the base class implementation
-     without using OETimingUtils yields an expected value.
-     
-     However, calculating the absolute time while in the base class
-     implementation seems to have a performance hit effect as
-     emulation is not as fast as it should be when running on a device,
-     causing audio and video glitches, but appears fine in the simulator
-     (no doubt because it's on a faster CPU).
-     
-     Calling OEMonotonicTime() from any subclass implementation of
-     this method also yields the expected value, and results in
-     expected emulation speed.
-     
-     I am unable to understand or explain why this occurs. I am obviously
-     missing some vital information relating to this issue.
-     Perhaps someone more knowledgable than myself can explain and/or fix this.
-     */
-    
-    //	struct mach_timebase_info timebase;
-    //	mach_timebase_info(&timebase);
-    //	double toSec = 1e-09 * (timebase.numer / timebase.denom);
-    //	NSTimeInterval gameTime = mach_absolute_time() * toSec;
-    
-    OESetThreadRealtime(gameInterval, 0.007, 0.03); // guessed from bsnes
-    while (!shouldStop)
-    {
-        if (self.shouldResyncTime)
-        {
-            self.shouldResyncTime = NO;
-            gameTime = OEMonotonicTime();
-        }
-        
-        gameTime += gameInterval;
-        
-        @autoreleasepool
-        {
-            if (isRunning)
-            {
-                @synchronized(self) {
-                    [self executeFrame];
-                }
-            }
-        }
-        
-        OEWaitUntil(gameTime);
-        //		mach_wait_until(gameTime / toSec);
-    }
-}
-
 - (BOOL)loadFileAtPath:(NSString *)path
 {
     memset(pad, 0, sizeof(uint32_t) * PVGBAButtonCount);
@@ -330,6 +271,84 @@ const int GBAMap[] = {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_BUTTON_A, KEY_B
 - (oneway void)releaseGBAButton:(PVGBAButton)button forPlayer:(NSInteger)player
 {
     pad[player] &= ~GBAMap[button];
+}
+
+bool systemReadJoypads()
+{
+    __strong PVGBAEmulatorCore *strongCurrent = _current;
+
+    for (NSInteger playerIndex = 0; playerIndex < 2; playerIndex++)
+    {
+        GCController *controller = nil;
+        if (strongCurrent.controller1 && playerIndex == 0)
+        {
+            controller = strongCurrent.controller1;
+        }
+        else if (strongCurrent.controller2 && playerIndex == 1)
+        {
+            controller = strongCurrent.controller2;
+            playerIndex = 1;
+        }
+
+        if (controller)
+        {
+            if ([controller extendedGamepad])
+            {
+                GCExtendedGamepad *gamepad = [controller extendedGamepad];
+                GCControllerDirectionPad *dpad = [gamepad dpad];
+
+                (gamepad.dpad.up.isPressed || gamepad.leftThumbstick.up.isPressed) ? pad[playerIndex] |= KEY_UP : pad[playerIndex] &= ~KEY_UP;
+                (gamepad.dpad.down.isPressed || gamepad.leftThumbstick.down.isPressed) ? pad[playerIndex] |= KEY_DOWN : pad[playerIndex] &= ~KEY_DOWN;
+                (gamepad.dpad.left.isPressed || gamepad.leftThumbstick.left.isPressed) ? pad[playerIndex] |= KEY_LEFT : pad[playerIndex] &= ~KEY_LEFT;
+                (gamepad.dpad.right.isPressed || gamepad.leftThumbstick.right.isPressed) ? pad[playerIndex] |= KEY_RIGHT : pad[playerIndex] &= ~KEY_RIGHT;
+
+                gamepad.buttonA.isPressed ? pad[playerIndex] |= KEY_BUTTON_B : pad[playerIndex] &= ~KEY_BUTTON_B;
+                gamepad.buttonB.isPressed ? pad[playerIndex] |= KEY_BUTTON_A : pad[playerIndex] &= ~KEY_BUTTON_A;
+
+                gamepad.leftShoulder.isPressed ? pad[playerIndex] |= KEY_BUTTON_L : pad[playerIndex] &= ~KEY_BUTTON_L;
+                gamepad.rightShoulder.isPressed ? pad[playerIndex] |= KEY_BUTTON_R : pad[playerIndex] &= ~KEY_BUTTON_R;
+
+                (gamepad.buttonX.isPressed || gamepad.leftTrigger.isPressed) ? pad[playerIndex] |= KEY_BUTTON_START : pad[playerIndex] &= ~KEY_BUTTON_START;
+                (gamepad.buttonY.isPressed || gamepad.rightTrigger.isPressed) ? pad[playerIndex] |= KEY_BUTTON_SELECT : pad[playerIndex] &= ~KEY_BUTTON_SELECT;
+            }
+            else if ([controller gamepad])
+            {
+                GCGamepad *gamepad = [controller gamepad];
+                GCControllerDirectionPad *dpad = [gamepad dpad];
+
+                gamepad.dpad.up.isPressed ? pad[playerIndex] |= KEY_UP : pad[playerIndex] &= ~KEY_UP;
+                gamepad.dpad.down.isPressed ? pad[playerIndex] |= KEY_DOWN : pad[playerIndex] &= ~KEY_DOWN;
+                gamepad.dpad.left.isPressed ? pad[playerIndex] |= KEY_LEFT : pad[playerIndex] &= ~KEY_LEFT;
+                gamepad.dpad.right.isPressed ? pad[playerIndex] |= KEY_RIGHT : pad[playerIndex] &= ~KEY_RIGHT;
+
+                gamepad.buttonA.isPressed ? pad[playerIndex] |= KEY_BUTTON_B : pad[playerIndex] &= ~KEY_BUTTON_B;
+                gamepad.buttonB.isPressed ? pad[playerIndex] |= KEY_BUTTON_A : pad[playerIndex] &= ~KEY_BUTTON_A;
+
+                gamepad.leftShoulder.isPressed ? pad[playerIndex] |= KEY_BUTTON_L : pad[playerIndex] &= ~KEY_BUTTON_L;
+                gamepad.rightShoulder.isPressed ? pad[playerIndex] |= KEY_BUTTON_R : pad[playerIndex] &= ~KEY_BUTTON_R;
+
+                gamepad.buttonX.isPressed ? pad[playerIndex] |= KEY_BUTTON_START : pad[playerIndex] &= ~KEY_BUTTON_START;
+                gamepad.buttonY.isPressed ? pad[playerIndex] |= KEY_BUTTON_SELECT : pad[playerIndex] &= ~KEY_BUTTON_SELECT;
+            }
+#if TARGET_OS_TV
+            else if ([controller microGamepad])
+            {
+                GCMicroGamepad *gamepad = [controller microGamepad];
+                GCControllerDirectionPad *dpad = [gamepad dpad];
+
+                gamepad.dpad.up.value > 0.5 ? pad[playerIndex] |= KEY_UP : pad[playerIndex] &= ~KEY_UP;
+                gamepad.dpad.down.value > 0.5 ? pad[playerIndex] |= KEY_DOWN : pad[playerIndex] &= ~KEY_DOWN;
+                gamepad.dpad.left.value > 0.5 ? pad[playerIndex] |= KEY_LEFT : pad[playerIndex] &= ~KEY_LEFT;
+                gamepad.dpad.right.value > 0.5 ? pad[playerIndex] |= KEY_RIGHT : pad[playerIndex] &= ~KEY_RIGHT;
+                
+                gamepad.buttonA.isPressed ? pad[playerIndex] |= KEY_BUTTON_B : pad[playerIndex] &= ~KEY_BUTTON_B;
+                gamepad.buttonX.isPressed ? pad[playerIndex] |= KEY_BUTTON_A : pad[playerIndex] &= ~KEY_BUTTON_A;
+            }
+#endif
+        }
+    }
+
+    return true;
 }
 
 #pragma mark - Cheats
@@ -763,7 +782,6 @@ uint32_t systemGetClock()
 int systemGetSensorX(void) {return 0;}
 int systemGetSensorY(void) {return 0;}
 bool systemPauseOnFrame() {return false;}
-bool systemReadJoypads() {return true;}
 bool systemCanChangeSoundQuality() {return false;} // ?
 void (*dbgOutput)(const char *s, uint32_t addr);
 void systemFrame() {}

@@ -67,9 +67,8 @@ static __weak PVSNESEmulatorCore *_current;
 bool8 S9xDeinitUpdate(int width, int height)
 {
     __strong PVSNESEmulatorCore *strongCurrent = _current;
-    
     [strongCurrent flipBuffers];
-    
+
     return true;
 }
 
@@ -129,69 +128,14 @@ NSString *SNESEmulatorKeys[] = { @"Up", @"Down", @"Left", @"Right", @"A", @"B", 
     [super stopEmulation];
 }
 
-- (void)frameRefreshThread:(id)anArgument
-{
-	gameInterval = 1.0 / [self frameInterval];
-	NSTimeInterval gameTime = OEMonotonicTime();
-	
-	/*
-	 Calling OEMonotonicTime() from the base class implementation
-	 of this method causes it to return a garbage value similar
-	 to 1.52746e+9 which, in turn, causes OEWaitUntil to wait forever.
-	 
-	 Calculating the absolute time in the base class implementation
-	 without using OETimingUtils yields an expected value.
-	 
-	 However, calculating the absolute time while in the base class
-	 implementation seems to have a performance hit effect as
-	 emulation is not as fast as it should be when running on a device,
-	 causing audio and video glitches, but appears fine in the simulator
-	 (no doubt because it's on a faster CPU).
-	 
-	 Calling OEMonotonicTime() from any subclass implementation of
-	 this method also yields the expected value, and results in
-	 expected emulation speed.
-	 
-	 I am unable to understand or explain why this occurs. I am obviously
-	 missing some vital information relating to this issue.
-	 Perhaps someone more knowledgable than myself can explain and/or fix this.
-	 */
-	
-//	struct mach_timebase_info timebase;
-//	mach_timebase_info(&timebase);
-//	double toSec = 1e-09 * (timebase.numer / timebase.denom);
-//	NSTimeInterval gameTime = mach_absolute_time() * toSec;
-	
-	OESetThreadRealtime(gameInterval, 0.007, 0.03); // guessed from bsnes
-	while (!shouldStop)
-	{
-		if (self.shouldResyncTime)
-		{
-			self.shouldResyncTime = NO;
-			gameTime = OEMonotonicTime();
-		}
-		
-		gameTime += gameInterval;
-		
-		@autoreleasepool
-		{
-			if (isRunning)
-			{
-                @synchronized(self){
-                    [self executeFrame];
-                }
-			}
-		}
-		
-		OEWaitUntil(gameTime);
-//		mach_wait_until(gameTime / toSec);
-	}
-}
-
 - (void)executeFrame
 {
     IPPU.RenderThisFrame = YES;
     S9xMainLoop();
+    if (self.controller1 || self.controller2)
+    {
+        [self pollControllers];
+    }
 }
 
 - (BOOL)loadFileAtPath:(NSString *)path
@@ -242,7 +186,6 @@ NSString *SNESEmulatorKeys[] = { @"Up", @"Down", @"Left", @"Right", @"A", @"B", 
     GFX.Screen = (short unsigned int *)videoBufferA;
 
     S9xUnmapAllControls();
-
     [self mapButtons];
 
     S9xSetController(0, CTL_JOYPAD, 0, 0, 0, 0);
@@ -264,7 +207,7 @@ NSString *SNESEmulatorKeys[] = { @"Up", @"Down", @"Left", @"Right", @"A", @"B", 
     {
         DLog(@"Couldn't init sound");
     }
-    
+
     S9xSetSamplesAvailableCallback(FinalizeSamplesAudioCallback, NULL);
 
     Settings.NoPatch = true;
@@ -439,6 +382,73 @@ static void FinalizeSamplesAudioCallback(void *)
             s9xcommand_t cmd = S9xGetCommandT([[playerString stringByAppendingString:SNESEmulatorKeys[idx]] UTF8String]);
             S9xMapButton(playerMask | idx, cmd, false);
         }
+    }
+}
+
+- (void)pollControllers
+{
+    GCController *controller = nil;
+
+    for (NSInteger player = 1; player <= 2; player++)
+    {
+        NSUInteger playerMask = player << 16;
+        GCController *controller = (player == 1) ? self.controller1 : self.controller2;
+
+        if ([controller extendedGamepad])
+        {
+            GCExtendedGamepad *pad = [controller extendedGamepad];
+            GCControllerDirectionPad *dpad = [pad dpad];
+
+            S9xReportButton(playerMask | PVSNESButtonUp, dpad.up.pressed?:pad.leftThumbstick.up.pressed);
+            S9xReportButton(playerMask | PVSNESButtonDown, dpad.down.pressed?:pad.leftThumbstick.down.pressed);
+            S9xReportButton(playerMask | PVSNESButtonLeft, dpad.left.pressed?:pad.leftThumbstick.left.pressed);
+            S9xReportButton(playerMask | PVSNESButtonRight, dpad.right.pressed?:pad.leftThumbstick.right.pressed);
+
+            S9xReportButton(playerMask | PVSNESButtonB, pad.buttonA.pressed);
+            S9xReportButton(playerMask | PVSNESButtonA, pad.buttonB.pressed);
+            S9xReportButton(playerMask | PVSNESButtonY, pad.buttonX.pressed);
+            S9xReportButton(playerMask | PVSNESButtonX, pad.buttonY.pressed);
+
+            S9xReportButton(playerMask | PVSNESButtonTriggerLeft, pad.leftShoulder.pressed);
+            S9xReportButton(playerMask | PVSNESButtonTriggerRight, pad.rightShoulder.pressed);
+
+            S9xReportButton(playerMask | PVSNESButtonStart, pad.leftTrigger.pressed);
+            S9xReportButton(playerMask | PVSNESButtonSelect, pad.rightTrigger.pressed);
+
+        }
+        else if ([controller gamepad])
+        {
+            GCGamepad *pad = [controller gamepad];
+            GCControllerDirectionPad *dpad = [pad dpad];
+
+            S9xReportButton(playerMask | PVSNESButtonUp, dpad.up.pressed);
+            S9xReportButton(playerMask | PVSNESButtonDown, dpad.down.pressed);
+            S9xReportButton(playerMask | PVSNESButtonLeft, dpad.left.pressed);
+            S9xReportButton(playerMask | PVSNESButtonRight, dpad.right.pressed);
+
+            S9xReportButton(playerMask | PVSNESButtonB, pad.buttonA.pressed);
+            S9xReportButton(playerMask | PVSNESButtonA, pad.buttonB.pressed);
+            S9xReportButton(playerMask | PVSNESButtonY, pad.buttonX.pressed);
+            S9xReportButton(playerMask | PVSNESButtonX, pad.buttonY.pressed);
+
+            S9xReportButton(playerMask | PVSNESButtonTriggerLeft, pad.leftShoulder.pressed);
+            S9xReportButton(playerMask | PVSNESButtonTriggerRight, pad.rightShoulder.pressed);
+        }
+#if TARGET_OS_TV
+        else if ([controller microGamepad])
+        {
+            GCMicroGamepad *pad = [controller microGamepad];
+            GCControllerDirectionPad *dpad = [pad dpad];
+
+            S9xReportButton(playerMask | PVSNESButtonUp, dpad.up.value > 0.5);
+            S9xReportButton(playerMask | PVSNESButtonDown, dpad.down.value > 0.5);
+            S9xReportButton(playerMask | PVSNESButtonLeft, dpad.left.value > 0.5);
+            S9xReportButton(playerMask | PVSNESButtonRight, dpad.right.value > 0.5);
+
+            S9xReportButton(playerMask | PVSNESButtonB, pad.buttonA.pressed);
+            S9xReportButton(playerMask | PVSNESButtonA, pad.buttonX.pressed);
+        }
+#endif
     }
 }
 

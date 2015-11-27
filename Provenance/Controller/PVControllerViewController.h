@@ -10,6 +10,7 @@
 #import "JSDPad.h"
 #import "JSButton.h"
 #import "PViCadeController.h"
+#import "PVSettingsModel.h"
 
 @import GameController;
 
@@ -30,23 +31,12 @@ typedef NS_ENUM(NSInteger, PVControllerButton) {
     PVControllerButtonRightTrigger
 };
 
-@protocol PVControllerViewControllerDelegate <NSObject>
-
-- (void)controllerViewControllerDidBeginEditing:(PVControllerViewController *)controllerViewController;
-- (void)controllerViewControllerDidEndEditing:(PVControllerViewController *)controllerViewController;
-- (void)controllerViewControllerDidPressMenuButton:(PVControllerViewController *)controllerViewController;
-
-@end
-
 @interface PVControllerViewController : UIViewController <JSDPadDelegate, JSButtonDelegate> {
 
 }
 
 @property (nonatomic, strong) PVEmulatorCore *emulatorCore;
 @property (nonatomic, copy) NSString *systemIdentifier;
-@property (nonatomic, assign) id <PVControllerViewControllerDelegate> delegate;
-@property (nonatomic, strong) PViCadeController *iCadeController;
-
 @property (nonatomic, strong) JSDPad *dPad;
 @property (nonatomic, strong) UIView *buttonGroup;
 @property (nonatomic, strong) JSButton *leftShoulderButton;
@@ -55,17 +45,15 @@ typedef NS_ENUM(NSInteger, PVControllerButton) {
 @property (nonatomic, strong) JSButton *selectButton;
 
 - (id)initWithControlLayout:(NSArray *)controlLayout systemIdentifier:(NSString *)systemIdentifier;
-- (void)editControls;
 
 - (void)dPad:(JSDPad *)dPad didPressDirection:(JSDPadDirection)direction;
 - (void)dPadDidReleaseDirection:(JSDPad *)dPad;
 - (void)buttonPressed:(JSButton *)button;
 - (void)buttonReleased:(JSButton *)button;
+- (void)pressStartForPlayer:(NSUInteger)player;
+- (void)releaseStartForPlayer:(NSUInteger)player;
+- (void)pressSelectForPlayer:(NSUInteger)player;
+- (void)releaseSelectForPlayer:(NSUInteger)player;
 - (void)vibrate;
-
-- (void)controllerPressedButton:(PVControllerButton)button forPlayer:(NSInteger)player;
-- (void)controllerReleasedButton:(PVControllerButton)button forPlayer:(NSInteger)player;
-
-- (void)controllerDirectionValueChanged:(GCControllerDirectionPad *)dpad forPlayer:(NSInteger)player;
 
 @end

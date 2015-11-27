@@ -8,6 +8,7 @@
 
 #import <UIKit/UIKit.h>
 #import "OERingBuffer.h"
+#import <GameController/GameController.h>
 
 @interface PVEmulatorCore : NSObject {
 	
@@ -19,13 +20,19 @@
 
     BOOL isRunning;
     BOOL shouldStop;
-	
+
+    double framerateMultiplier;
+
 }
 
 @property (nonatomic, copy) NSString *romName;
 @property (nonatomic, copy) NSString *batterySavesPath;
 @property (nonatomic, copy) NSString *BIOSPath;
 @property (atomic, assign) BOOL shouldResyncTime;
+@property (nonatomic, assign) BOOL fastForward;
+
+@property (nonatomic, strong) GCController *controller1;
+@property (nonatomic, strong) GCController *controller2;
 
 - (void)startEmulation;
 - (void)resetEmulation;
@@ -35,6 +42,9 @@
 - (void)frameRefreshThread:(id)anArgument;
 - (void)executeFrame;
 - (BOOL)loadFileAtPath:(NSString*)path;
+
+- (BOOL)supportsDiskSwapping;
+- (void)swapDisk;
 
 - (const void *)videoBuffer;
 - (CGRect)screenRect;

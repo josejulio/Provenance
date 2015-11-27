@@ -32,6 +32,8 @@
 	[self.opacitySlider setValue:[settings controllerOpacity]];
 	[self.autoLockSwitch setOn:[settings disableAutoLock]];
     [self.vibrateSwitch setOn:[settings buttonVibration]];
+    [self.volumeSlider setValue:[settings volume]];
+    [self.volumeValueLabel setText:[NSString stringWithFormat:@"%.0f%%", self.volumeSlider.value * 100]];
     [self.opacityValueLabel setText:[NSString stringWithFormat:@"%.0f%%", self.opacitySlider.value * 100]];
     [self.versionLabel setText:[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"]];
 #if DEBUG
@@ -87,15 +89,22 @@
     [[PVSettingsModel sharedInstance] setButtonVibration:[self.vibrateSwitch isOn]];
 }
 
+- (IBAction)volumeChanged:(id)sender
+{
+    [[PVSettingsModel sharedInstance] setVolume:self.volumeSlider.value];
+    [self.volumeValueLabel setText:[NSString stringWithFormat:@"%.0f%%", self.volumeSlider.value * 100]];
+}
+
+
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (indexPath.section == 2 && indexPath.row == 0)
+    if (indexPath.section == 3 && indexPath.row == 0)
     {
         PViCadeControllerViewController *iCadeControllerViewController = [[PViCadeControllerViewController alloc] init];
         UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:iCadeControllerViewController];
         [self presentViewController:navController animated:YES completion:NULL];
     }
-    else if(indexPath.section == 3 && indexPath. row == 0) {
+    else if(indexPath.section == 4 && indexPath. row == 0) {
         // import/export roms and game saves button
         [tableView deselectRowAtIndexPath:[tableView indexPathForSelectedRow] animated:YES];
         
@@ -110,6 +119,8 @@
             UIAlertController *alert = [UIAlertController alertControllerWithTitle: @"Unable to start web server!"
                                                             message: @"Your device needs to be connected to a WiFi network to continue!"
                                                                     preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            }]];
             [self presentViewController:alert animated:YES completion:NULL];
         } else {
             // connected via wifi, let's continue
@@ -135,7 +146,7 @@
         }
         
     }
-    else if (indexPath.section == 4 && indexPath.row == 0)
+    else if (indexPath.section == 5 && indexPath.row == 0)
     {
         [tableView deselectRowAtIndexPath:[tableView indexPathForSelectedRow] animated:YES];
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Refresh Game Library?"
@@ -148,7 +159,7 @@
         [alert addAction:[UIAlertAction actionWithTitle:@"No" style:UIAlertActionStyleCancel handler:NULL]];
         [self presentViewController:alert animated:YES completion:NULL];
     }
-	else if (indexPath.section == 4 && indexPath.row == 1)
+	else if (indexPath.section == 5 && indexPath.row == 1)
 	{
 		[tableView deselectRowAtIndexPath:[tableView indexPathForSelectedRow] animated:YES];
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Empty Image Cache?"
@@ -160,12 +171,14 @@
         [alert addAction:[UIAlertAction actionWithTitle:@"No" style:UIAlertActionStyleCancel handler:NULL]];
         [self presentViewController:alert animated:YES completion:NULL];
 	}
-    else if (indexPath.section == 4 && indexPath.row == 2)
+    else if (indexPath.section == 5 && indexPath.row == 2)
     {
         PVConflictViewController *conflictViewController = [[PVConflictViewController alloc] initWithGameImporter:self.gameImporter];
         UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:conflictViewController];
         [self presentViewController:navController animated:YES completion:NULL];
     }
+    [self.tableView deselectRowAtIndexPath:indexPath animated: YES];
+    [self.navigationItem setRightBarButtonItem:[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(done:)] animated:NO];
 }
 
 

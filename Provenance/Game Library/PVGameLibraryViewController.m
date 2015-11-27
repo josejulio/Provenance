@@ -332,6 +332,8 @@ static NSString *_reuseIdentifier = @"PVGameLibraryCollectionViewCell";
         UIAlertController *alert = [UIAlertController alertControllerWithTitle: @"Unable to start web server!"
                                                                        message: @"Your device needs to be connected to a network to continue!"
                                                                 preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        }]];
         [self presentViewController:alert animated:YES completion:NULL];
     } else {
         // connected via wifi, let's continue
@@ -522,7 +524,7 @@ static NSString *_reuseIdentifier = @"PVGameLibraryCollectionViewCell";
     for (PVGame *game in [[PVGame allObjectsInRealm:self.realm] sortedResultsUsingProperty:@"title" ascending:YES])
     {
         NSString *systemID = [game systemIdentifier];
-        NSMutableArray *games = [[tempSections objectForKey:systemID] mutableCopy];
+        NSMutableArray *games = [tempSections objectForKey:systemID];
         if (!games)
         {
             games = [NSMutableArray array];
@@ -784,54 +786,57 @@ static NSString *_reuseIdentifier = @"PVGameLibraryCollectionViewCell";
 - (void)updateRecentGames:(PVGame *)game
 {
 #if !TARGET_OS_TV
-    RLMRealm *realm = [RLMRealm defaultRealm];
-    [realm refresh];
+    if (NSClassFromString(@"UIApplicationShortcutItem")) {
+        RLMRealm *realm = [RLMRealm defaultRealm];
+        [realm refresh];
 
-    RLMResults *recents = [PVRecentGame allObjects];
+        RLMResults *recents = [PVRecentGame allObjects];
 
-    PVRecentGame *recentToDelete = [[PVRecentGame objectsWithPredicate:[NSPredicate predicateWithFormat:@"game.md5Hash == %@", [game md5Hash]]] firstObject];
-    if (recentToDelete)
-    {
-        [realm beginWriteTransaction];
-        [realm deleteObject:recentToDelete];
-        [realm commitWriteTransaction];
-    }
-
-    if ([recents count] >= PVMaxRecentsCount)
-    {
-        PVRecentGame *oldestRecent = [[recents sortedResultsUsingProperty:@"lastPlayedDate" ascending:NO] lastObject];
-        [realm beginWriteTransaction];
-        [realm deleteObject:oldestRecent];
-        [realm commitWriteTransaction];
-    }
-
-    PVRecentGame *newRecent = [[PVRecentGame alloc] initWithGame:game];
-    [realm beginWriteTransaction];
-    [realm addObject:newRecent];
-    [realm commitWriteTransaction];
-
-    [[UIApplication sharedApplication] setShortcutItems:nil];
-    NSMutableArray *shortcuts = [NSMutableArray array];
-    for (PVRecentGame *recentGame in [recents sortedResultsUsingProperty:@"lastPlayedDate" ascending:NO])
-    {
-        if ([recentGame game])
-        {
-            UIApplicationShortcutItem *shortcut = [[UIApplicationShortcutItem alloc] initWithType:@"kRecentGameShortcut"
-                                                                                   localizedTitle:[[recentGame game] title]
-                                                                                localizedSubtitle:[[PVEmulatorConfiguration sharedInstance] nameForSystemIdentifier:[[recentGame game] systemIdentifier]]
-                                                                                             icon:nil
-                                                                                         userInfo:@{@"PVGameHash": [[recentGame game] md5Hash]}];
-            [shortcuts addObject:shortcut];
-        }
-        else
+        PVRecentGame *recentToDelete = [[PVRecentGame objectsWithPredicate:[NSPredicate predicateWithFormat:@"game.md5Hash == %@", [game md5Hash]]] firstObject];
+        if (recentToDelete)
         {
             [realm beginWriteTransaction];
-            [realm deleteObject:recentGame];
+            [realm deleteObject:recentToDelete];
             [realm commitWriteTransaction];
         }
-    }
 
-    [[UIApplication sharedApplication] setShortcutItems:shortcuts];
+        if ([recents count] >= PVMaxRecentsCount)
+        {
+            PVRecentGame *oldestRecent = [[recents sortedResultsUsingProperty:@"lastPlayedDate" ascending:NO] lastObject];
+            [realm beginWriteTransaction];
+            [realm deleteObject:oldestRecent];
+            [realm commitWriteTransaction];
+        }
+
+        PVRecentGame *newRecent = [[PVRecentGame alloc] initWithGame:game];
+        [realm beginWriteTransaction];
+        [realm addObject:newRecent];
+        [realm commitWriteTransaction];
+
+
+        [[UIApplication sharedApplication] setShortcutItems:nil];
+        NSMutableArray *shortcuts = [NSMutableArray array];
+        for (PVRecentGame *recentGame in [recents sortedResultsUsingProperty:@"lastPlayedDate" ascending:NO])
+        {
+            if ([recentGame game])
+            {
+                UIApplicationShortcutItem *shortcut = [[UIApplicationShortcutItem alloc] initWithType:@"kRecentGameShortcut"
+                                                                                       localizedTitle:[[recentGame game] title]
+                                                                                    localizedSubtitle:[[PVEmulatorConfiguration sharedInstance] nameForSystemIdentifier:[[recentGame game] systemIdentifier]]
+                                                                                                 icon:nil
+                                                                                             userInfo:@{@"PVGameHash": [[recentGame game] md5Hash]}];
+                [shortcuts addObject:shortcut];
+            }
+            else
+            {
+                [realm beginWriteTransaction];
+                [realm deleteObject:recentGame];
+                [realm commitWriteTransaction];
+            }
+        }
+        
+        [[UIApplication sharedApplication] setShortcutItems:shortcuts];
+    }
 #endif
 }
 

@@ -15,6 +15,7 @@ NSString * const kAskToAutoLoadKey = @"kAskToAutoLoadKey";
 NSString * const kDisableAutoLockKey = @"kDisableAutoLockKey";
 NSString * const kButtonVibrationKey = @"kButtonVibrationKey";
 NSString * const kICadeControllerSettingKey = @"kiCadeControllerSettingKey";
+NSString * const kVolumeSettingKey = @"kVolumeSettingKey";
 
 @implementation PVSettingsModel
 
@@ -42,7 +43,8 @@ NSString * const kICadeControllerSettingKey = @"kiCadeControllerSettingKey";
                                                                   kControllerOpacityKey : @(0.2),
                                                                   kDisableAutoLockKey : @(NO),
                                                                   kButtonVibrationKey : @(YES),
-                                                                  kICadeControllerSettingKey : @(kICadeControllerSettingDisabled)}];
+                                                                  kICadeControllerSettingKey : @(kICadeControllerSettingDisabled),
+                                                                  kVolumeSettingKey : @(1.0)}];
 		[[NSUserDefaults standardUserDefaults] synchronize];
 		
 		_autoSave = [[NSUserDefaults standardUserDefaults] boolForKey:kAutoSaveKey];
@@ -51,6 +53,7 @@ NSString * const kICadeControllerSettingKey = @"kiCadeControllerSettingKey";
 		_disableAutoLock = [[NSUserDefaults standardUserDefaults] boolForKey:kDisableAutoLockKey];
         _buttonVibration = [[NSUserDefaults standardUserDefaults] boolForKey:kButtonVibrationKey];
         _iCadeControllerSetting = [[NSUserDefaults standardUserDefaults] integerForKey:kICadeControllerSettingKey];
+        _volume = [[NSUserDefaults standardUserDefaults] floatForKey:kVolumeSettingKey];
 	}
 	
 	return self;
@@ -106,6 +109,12 @@ NSString * const kICadeControllerSettingKey = @"kiCadeControllerSettingKey";
     _iCadeControllerSetting = iCadeControllerSetting;
     [[NSUserDefaults standardUserDefaults] setInteger:iCadeControllerSetting forKey:kICadeControllerSettingKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)setVolume:(float)volume
+{
+    _volume = volume;
+    [[NSUserDefaults standardUserDefaults] setFloat:volume forKey:kVolumeSettingKey];
 }
 
 @end

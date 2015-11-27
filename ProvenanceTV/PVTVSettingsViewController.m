@@ -23,7 +23,6 @@
 @property (weak, nonatomic) IBOutlet UILabel *versionValueLabel;
 @property (weak, nonatomic) IBOutlet UILabel *modeValueLabel;
 
-
 @end
 
 @implementation PVTVSettingsViewController
